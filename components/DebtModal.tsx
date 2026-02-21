@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Debt, Currency } from '../types';
 import { X, Calendar } from 'lucide-react';
 import { generateGoogleCalendarUrl } from '../services/calendarService';
@@ -10,11 +10,21 @@ interface Props {
 }
 
 export const DebtModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
+  const userCountry = localStorage.getItem('user_country') || 'Venezuela';
+  const mainCurrency = localStorage.getItem('main_currency') || 'USD';
+
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'I_OWE' | 'OWES_ME'>('I_OWE');
-  const [currency, setCurrency] = useState<Currency>(Currency.USD);
+  const [currency, setCurrency] = useState<Currency | string>(userCountry === 'Venezuela' ? Currency.USD : mainCurrency);
   const [dueDate, setDueDate] = useState('');
+
+  // Asegurar que si abre y no es Venezuela, fuerce la moneda correcta
+  useEffect(() => {
+     if (isOpen) {
+        setCurrency(userCountry === 'Venezuela' ? Currency.USD : mainCurrency);
+     }
+  }, [isOpen, userCountry, mainCurrency]);
 
   if (!isOpen) return null;
 
@@ -24,13 +34,14 @@ export const DebtModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
       name,
       amount: parseFloat(amount),
       type,
-      currency,
+      currency: currency as Currency,
       dueDate: dueDate || undefined,
     });
     onClose();
     setName('');
     setAmount('');
     setDueDate('');
+    setCurrency(userCountry === 'Venezuela' ? Currency.USD : mainCurrency);
   };
 
   const handleAddToCalendar = () => {
@@ -99,11 +110,18 @@ export const DebtModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
               <label className="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
               <select
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value as Currency)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"
+                onChange={(e) => setCurrency(e.target.value)}
+                disabled={userCountry !== 'Venezuela'}
+                className={`w-full p-3 bg-slate-50 border border-slate-200 rounded-xl ${userCountry !== 'Venezuela' ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <option value={Currency.USD}>USD</option>
-                <option value={Currency.VES}>VES</option>
+                {userCountry === 'Venezuela' ? (
+                    <>
+                        <option value={Currency.USD}>USD</option>
+                        <option value={Currency.VES}>VES</option>
+                    </>
+                ) : (
+                    <option value={mainCurrency}>{mainCurrency}</option>
+                )}
               </select>
             </div>
           </div>

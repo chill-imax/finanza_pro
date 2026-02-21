@@ -12,6 +12,9 @@ interface Props {
 }
 
 export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts, onConfirm, currentExchangeRate }) => {
+  const userCountry = localStorage.getItem('user_country') || 'Venezuela';
+  const mainCurrency = localStorage.getItem('main_currency') || 'USD';
+
   const [amount, setAmount] = useState('');
   const [accountId, setAccountId] = useState('');
   const [customRate, setCustomRate] = useState('');
@@ -36,7 +39,9 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
 
   const selectedAccount = accounts.find(a => a.id === accountId);
   const isPaying = debt.type === 'I_OWE';
-  const isMultiCurrency = selectedAccount && selectedAccount.currency !== debt.currency;
+  
+  // La multicurrency solo aplica para Venezuela
+  const isMultiCurrency = userCountry === 'Venezuela' && selectedAccount && selectedAccount.currency !== debt.currency;
 
   const getConversionPreview = () => {
     if (!amount || !selectedAccount) return null;
@@ -54,7 +59,7 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
     }
 
     return (
-        <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 mt-2 text-sm">
+        <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 mt-2 text-sm animate-fade-in">
             <div className="flex items-center gap-2 text-blue-800 font-bold mb-1">
                 <RefreshCw className="w-4 h-4" /> Conversión
             </div>
@@ -69,9 +74,17 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
         </div>
     );
   };
+
+  // Helper para mostrar la moneda formateada según el país
+  const formatCurrency = (amount: number, currencyCode: string) => {
+      if (userCountry === 'Venezuela') {
+          return currencyCode === 'USD' ? `$${amount.toLocaleString()}` : `Bs.${amount.toLocaleString()}`;
+      }
+      return `${mainCurrency} ${amount.toLocaleString()}`;
+  };
   
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in">
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-lg font-bold text-slate-800">
@@ -88,15 +101,15 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
             <p className="font-bold text-lg text-slate-800">{debt.name}</p>
             <div className="flex justify-between mt-2 text-sm">
                 <span className="text-slate-500">Restante:</span>
-                <span className="font-bold">{debt.currency} {(debt.amount - debt.paidAmount).toLocaleString()}</span>
+                <span className="font-bold">{formatCurrency(debt.amount - debt.paidAmount, debt.currency)}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Monto a {isPaying ? 'Pagar' : 'Cobrar'} ({debt.currency})</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Monto a {isPaying ? 'Pagar' : 'Cobrar'}</label>
             <div className="relative">
-               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
-                {debt.currency === 'USD' ? '$' : 'Bs.'}
+               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                {userCountry === 'Venezuela' ? (debt.currency === 'USD' ? '$' : 'Bs.') : mainCurrency}
               </span>
               <input
                 type="number"
@@ -106,7 +119,7 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
                 max={debt.amount - debt.paidAmount}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold"
+                className={`w-full ${userCountry === 'Venezuela' ? 'pl-8' : 'pl-12'} pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold`}
               />
             </div>
           </div>
@@ -122,7 +135,7 @@ export const PayDebtModal: React.FC<Props> = ({ isOpen, onClose, debt, accounts,
              >
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id}>
-                    {acc.name} ({acc.currency}) - Saldo: {acc.currency === 'USD' ? '$' : 'Bs.'}{acc.balance.toLocaleString()}
+                    {acc.name} - Saldo: {formatCurrency(acc.balance, acc.currency)}
                   </option>
                 ))}
              </select>
