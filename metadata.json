@@ -1,0 +1,5 @@
+{
+  "name": "FinanzaPro VES/USD",
+  "description": "Una aplicación integral de gestión financiera personal diseñada para la economía dual VES/USD. Controla gastos, ingresos, deudas y ahorros con soporte multimoneda y asistencia de IA.",
+  "requestFramePermissions": []
+}
