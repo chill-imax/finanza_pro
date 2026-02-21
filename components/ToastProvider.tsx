@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { CheckCircle, AlertTriangle, Info, X, Flame } from "lucide-react";
 
-type ToastType = "success" | "error" | "info" | "warning" | "streak";
+export type ToastType = "success" | "error" | "info" | "warning" | "streak";
 
-interface Toast {
+interface ToastData {
   id: string;
   type: ToastType;
   title: string;
@@ -15,7 +15,6 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
-
 export const useToast = () => useContext(ToastContext);
 
 const ICONS: Record<ToastType, React.ReactNode> = {
@@ -34,24 +33,29 @@ const STYLES: Record<ToastType, string> = {
   streak: "bg-gradient-to-r from-orange-500 to-red-500 text-white",
 };
 
-function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+interface ToastItemProps {
+  toast: ToastData;
+  onClose: () => void;
+}
+
+function ToastItem({ toast, onClose }: ToastItemProps) {
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-2xl shadow-xl max-w-sm w-full pointer-events-auto animate-slide-up ${STYLES[toast.type]}`}
-      style={{ animation: "slideUp 0.3s ease-out" }}
+      className={`flex items-start gap-3 px-4 py-3 rounded-2xl shadow-xl max-w-sm w-full pointer-events-auto ${STYLES[toast.type]}`}
+      style={{ animation: "toastSlideIn 0.3s ease-out" }}
     >
-      <span className="mt-0.5 shrink-0">{ICONS[toast.type]}</span>
+      <span className="mt-0.5 shrink-0 opacity-90">{ICONS[toast.type]}</span>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm leading-tight">{toast.title}</p>
         {toast.message && (
-          <p className="text-xs opacity-85 mt-0.5 leading-snug">
+          <p className="text-xs opacity-80 mt-0.5 leading-snug">
             {toast.message}
           </p>
         )}
       </div>
       <button
         onClick={onClose}
-        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity -mr-1 -mt-0.5"
+        className="shrink-0 opacity-60 hover:opacity-100 transition-opacity p-0.5"
       >
         <X className="w-4 h-4" />
       </button>
@@ -60,7 +64,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = useCallback(
     (type: ToastType, title: string, message?: string) => {
@@ -73,14 +77,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const closeToast = (id: string) =>
+  const closeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {/* Toast container */}
-      <div className="fixed top-4 left-0 right-0 z-[9998] flex flex-col items-center gap-2 px-4 pointer-events-none max-w-lg mx-auto">
+      <div
+        className="fixed top-4 left-0 right-0 z-[9999] flex flex-col items-center gap-2 px-4 pointer-events-none"
+        style={{ maxWidth: "512px", margin: "0 auto" }}
+      >
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}
@@ -90,8 +97,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         ))}
       </div>
       <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateY(-10px) scale(0.95); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
