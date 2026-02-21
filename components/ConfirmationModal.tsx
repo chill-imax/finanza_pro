@@ -15,7 +15,7 @@ export const ConfirmationModal: React.FC<Props> = ({ isOpen, onClose, onConfirm,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in">
         <div className="p-6 text-center">
             <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isDanger ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'}`}>

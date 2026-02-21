@@ -19,7 +19,8 @@ import { AccountModal } from "./components/AccountModal";
 import { CategoryModal } from "./components/CategoryModal";
 import { TransactionListModal } from "./components/TransactionListModal";
 import { TransactionDetailModal } from "./components/TransactionDetailModal";
-import { ConfirmationModal } from "./components/ConfirmationModal"; // New
+import { ConfirmationModal } from "./components/ConfirmationModal";
+import { SetupModal } from "./components/SetupModal";
 import { getFinancialAdvice } from "./services/geminiService";
 import { getBCVRate } from "./services/exchangeRateService";
 import {
@@ -47,51 +48,19 @@ import {
   Legend,
 } from "recharts";
 
-// --- Default Data ---
-const DEFAULT_ACCOUNTS: Account[] = [
-  {
-    id: "1",
-    name: "Efectivo",
-    type: AccountType.CASH,
-    currency: Currency.USD,
-    balance: 150,
-    color: "#10b981",
-    icon: "💵",
-  },
-  {
-    id: "2",
-    name: "Banesco",
-    type: AccountType.BANK,
-    currency: Currency.VES,
-    balance: 5000,
-    color: "#10b981",
-    icon: "🏦",
-  },
-  {
-    id: "3",
-    name: "Zelle",
-    type: AccountType.WALLET,
-    currency: Currency.USD,
-    balance: 1200,
-    color: "#8b5cf6",
-    icon: "📱",
-  },
-  {
-    id: "4",
-    name: "Ahorros",
-    type: AccountType.SAVINGS,
-    currency: Currency.USD,
-    balance: 500,
-    color: "#3b82f6",
-    icon: "🐖",
-  },
-];
-
 function App() {
+  // --- Country & Currency State ---
+  const [userCountry, setUserCountry] = useState<string>(
+    () => localStorage.getItem("user_country") || "",
+  );
+  const [mainCurrency, setMainCurrency] = useState<string>(
+    () => localStorage.getItem("main_currency") || "USD",
+  );
+
   // --- State ---
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const saved = localStorage.getItem("accounts");
-    return saved ? JSON.parse(saved) : DEFAULT_ACCOUNTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -186,11 +155,15 @@ function App() {
 
   useEffect(() => {
     const fetchRate = async () => {
-      const rate = await getBCVRate();
-      if (rate) setBcvRate(rate);
+      if (userCountry === "Venezuela") {
+        const rate = await getBCVRate();
+        if (rate) setBcvRate(rate);
+      }
     };
-    fetchRate();
-  }, []);
+    if (userCountry === "Venezuela") {
+      fetchRate();
+    }
+  }, [userCountry]);
 
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -302,6 +275,79 @@ function App() {
 
   // --- Actions ---
 
+  const handleSetupComplete = (country: string, currency: string) => {
+    setUserCountry(country);
+    setMainCurrency(currency);
+
+    // Si es la primera vez (no hay cuentas), generamos las cuentas por defecto
+    if (accounts.length === 0) {
+      let initialAccounts: Account[] = [];
+      if (country === "Venezuela") {
+        initialAccounts = [
+          {
+            id: "1",
+            name: "Efectivo USD",
+            type: AccountType.CASH,
+            currency: Currency.USD,
+            balance: 0,
+            color: "#10b981",
+            icon: "💵",
+          },
+          {
+            id: "2",
+            name: "Banesco",
+            type: AccountType.BANK,
+            currency: Currency.VES,
+            balance: 0,
+            color: "#3b82f6",
+            icon: "🏦",
+          },
+          {
+            id: "3",
+            name: "Zelle",
+            type: AccountType.WALLET,
+            currency: Currency.USD,
+            balance: 0,
+            color: "#8b5cf6",
+            icon: "📱",
+          },
+        ];
+      } else {
+        // Para el resto de países, solo creamos cuentas con su moneda local
+        initialAccounts = [
+          {
+            id: "1",
+            name: "Efectivo",
+            type: AccountType.CASH,
+            currency: currency as Currency,
+            balance: 0,
+            color: "#10b981",
+            icon: "💵",
+          },
+          {
+            id: "2",
+            name: "Banco",
+            type: AccountType.BANK,
+            currency: currency as Currency,
+            balance: 0,
+            color: "#3b82f6",
+            icon: "🏦",
+          },
+          {
+            id: "3",
+            name: "Ahorros",
+            type: AccountType.SAVINGS,
+            currency: currency as Currency,
+            balance: 0,
+            color: "#8b5cf6",
+            icon: "🐖",
+          },
+        ];
+      }
+      setAccounts(initialAccounts);
+    }
+  };
+
   const updateStreak = () => {
     const today = new Date().toISOString().split("T")[0];
     if (lastLogDate !== today) {
@@ -337,18 +383,12 @@ function App() {
 
     setTransactions((prev) => [newTx, ...prev]);
 
-    // Handle Recurring Logic Setup
     if (data.isRecurring) {
-      // Initial next date calc based on frequency selection
       let nextDate = new Date(data.date);
       const freq = data.frequency || Frequency.MONTHLY;
       const interval = data.customInterval || 1;
       const unit = data.customUnit || "MONTHS";
 
-      // Calculate first future occurrence logic (reuse logic or simple set for now)
-      // Note: Logic inside processRecurring handles the increment.
-      // Here we just need to set the initial "Next Due Date".
-      // The transaction just added covers the current date. So we schedule next one.
       switch (freq) {
         case Frequency.DAILY:
           nextDate.setDate(nextDate.getDate() + 1);
@@ -489,18 +529,15 @@ function App() {
   };
 
   const handleDeleteAccountAttempt = (account: Account) => {
-    // Check for transactions
     const hasTransactions = transactions.some(
       (t) => t.accountId === account.id || t.toAccountId === account.id,
     );
-
     if (hasTransactions) {
       alert(
         "No se puede eliminar esta cuenta porque tiene transacciones asociadas. Elimina las transacciones primero.",
       );
       return;
     }
-
     setConfirmationData({
       isOpen: true,
       title: "Eliminar Cuenta",
@@ -632,16 +669,22 @@ function App() {
   };
 
   const openNewTransaction = () => {
+    if (accounts.length === 0) {
+      alert("Primero debes crear una cuenta.");
+      return;
+    }
     setTxModalInitialData(null);
     setIsTxModalOpen(true);
   };
 
+  // --- Dynamic Dashboard Calculations ---
   const totalBalanceUSD = accounts
-    .filter((a) => a.currency === Currency.USD)
+    .filter((a) => a.currency === "USD")
     .reduce((sum, a) => sum + a.balance, 0);
   const totalBalanceVES = accounts
-    .filter((a) => a.currency === Currency.VES)
+    .filter((a) => a.currency === "VES")
     .reduce((sum, a) => sum + a.balance, 0);
+  const totalBalanceGlobal = accounts.reduce((sum, a) => sum + a.balance, 0);
 
   const grandTotalUSD = useMemo(() => {
     if (bcvRate === 0) return totalBalanceUSD;
@@ -653,7 +696,8 @@ function App() {
     transactions
       .filter(
         (t) =>
-          t.type === TransactionType.EXPENSE && t.currency === Currency.USD,
+          t.type === TransactionType.EXPENSE &&
+          (userCountry === "Venezuela" ? t.currency === "USD" : true),
       )
       .forEach((t) => {
         const catName =
@@ -661,26 +705,45 @@ function App() {
         dataMap[catName] = (dataMap[catName] || 0) + t.amount;
       });
     return Object.entries(dataMap).map(([name, value]) => ({ name, value }));
-  }, [transactions, categories]);
+  }, [transactions, categories, userCountry]);
 
   const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
   const today = new Date().toISOString().split("T")[0];
 
   const renderDashboard = () => (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-24">
       <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-        <div className="flex items-center gap-2">
-          <RefreshCcw className="w-4 h-4 text-slate-400" />
-          <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase">
-              Tasa BCV
-            </p>
-            <p className="font-bold text-slate-800">
-              {bcvRate > 0 ? `Bs. ${bcvRate.toFixed(2)}` : "Cargando..."}
-            </p>
+        {/* Top Bar - Dependiendo del País */}
+        {userCountry === "Venezuela" ? (
+          <>
+            <div className="flex items-center gap-2">
+              <RefreshCcw className="w-4 h-4 text-slate-400" />
+              <div>
+                <p className="text-[10px] text-slate-500 font-bold uppercase">
+                  Tasa BCV
+                </p>
+                <p className="font-bold text-slate-800">
+                  {bcvRate > 0 ? `Bs. ${bcvRate.toFixed(2)}` : "Cargando..."}
+                </p>
+              </div>
+            </div>
+            <div className="h-8 w-px bg-slate-200 mx-2"></div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-slate-400" />
+            <div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase">
+                País
+              </p>
+              <p className="font-bold text-slate-800">
+                {userCountry || "Configurando..."}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="h-8 w-px bg-slate-200 mx-2"></div>
+        )}
+
+        {/* Racha (Global) */}
         <div className="flex items-center gap-2">
           <Flame
             className={`w-5 h-5 ${streakCount > 0 ? "text-orange-500 fill-orange-500" : "text-slate-300"}`}
@@ -699,43 +762,54 @@ function App() {
         <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">
           Patrimonio Total Estimado
         </p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-black">
-            $
-            {grandTotalUSD.toLocaleString(undefined, {
-              maximumFractionDigits: 2,
-            })}
-          </span>
-          <span className="text-lg text-slate-400 font-medium">USD</span>
-        </div>
-        <div className="mt-4 flex gap-4 text-sm text-slate-300">
-          <div>
-            <span className="block text-[10px] uppercase text-slate-500">
-              En Dólares
+
+        {/* Renderizado condicional del balance total */}
+        {userCountry === "Venezuela" ? (
+          <>
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-black">
+                $
+                {grandTotalUSD.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+              <span className="text-lg text-slate-400 font-medium">USD</span>
+            </div>
+            <div className="mt-4 flex gap-4 text-sm text-slate-300">
+              <div>
+                <span className="block text-[10px] uppercase text-slate-500">
+                  En Dólares
+                </span>
+                <span className="font-semibold">
+                  ${totalBalanceUSD.toLocaleString()}
+                </span>
+              </div>
+              <div className="w-px bg-white/10"></div>
+              <div>
+                <span className="block text-[10px] uppercase text-slate-500">
+                  En Bolívares
+                </span>
+                <span className="font-semibold">
+                  Bs. {totalBalanceVES.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-black">
+              {totalBalanceGlobal.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}
             </span>
-            <span className="font-semibold">
-              ${totalBalanceUSD.toLocaleString()}
+            <span className="text-lg text-slate-400 font-medium ml-1">
+              {mainCurrency}
             </span>
           </div>
-          <div className="w-px bg-white/10"></div>
-          <div>
-            <span className="block text-[10px] uppercase text-slate-500">
-              En Bolívares
-            </span>
-            <span className="font-semibold">
-              Bs. {totalBalanceVES.toLocaleString()}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-        <button
-          onClick={openNewTransaction}
-          className="flex items-center gap-2 bg-primary text-white px-5 py-3 rounded-xl font-semibold shadow-lg whitespace-nowrap active:scale-95 transition-transform"
-        >
-          <Plus className="w-5 h-5" /> Nueva Transacción
-        </button>
         {lastLogDate !== today && (
           <button
             onClick={skipLogDay}
@@ -805,7 +879,11 @@ function App() {
                     className={`font-bold ${tx.type === "INCOME" ? "text-emerald-600" : "text-slate-800"}`}
                   >
                     {tx.type === "INCOME" ? "+" : "-"}
-                    {tx.currency === "USD" ? "$" : "Bs."}
+                    {userCountry === "Venezuela"
+                      ? tx.currency === "USD"
+                        ? "$"
+                        : "Bs."
+                      : mainCurrency + " "}
                     {tx.amount.toLocaleString()}
                   </span>
                 </div>
@@ -818,7 +896,7 @@ function App() {
       {expensesData.length > 0 && (
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="font-bold text-lg text-slate-800 mb-4">
-            Gastos (USD)
+            Gastos ({userCountry === "Venezuela" ? "USD" : mainCurrency})
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -850,7 +928,7 @@ function App() {
   );
 
   const renderAccounts = () => (
-    <div className="space-y-4 pb-20">
+    <div className="space-y-4 pb-24">
       <h2 className="text-2xl font-bold text-slate-800">Mis Cuentas</h2>
       <div className="grid grid-cols-1 gap-4">
         {accounts.map((acc) => (
@@ -877,7 +955,17 @@ function App() {
         ))}
         <button
           onClick={() => {
-            setEditingAccount(null);
+            setEditingAccount({
+              id: crypto.randomUUID(),
+              name: "",
+              type: AccountType.BANK,
+              currency: (userCountry === "Venezuela"
+                ? "USD"
+                : mainCurrency) as Currency,
+              balance: 0,
+              color: "#3b82f6",
+              icon: "🏦",
+            });
             setIsAccountModalOpen(true);
           }}
           className="p-4 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center text-slate-400 font-medium hover:border-blue-500 hover:text-blue-500 transition-colors"
@@ -889,7 +977,7 @@ function App() {
   );
 
   const renderDebts = () => (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-24">
       <h2 className="text-2xl font-bold text-slate-800">Control de Deudas</h2>
 
       <div className="flex gap-2 mb-4">
@@ -898,10 +986,13 @@ function App() {
             Por Pagar
           </span>
           <p className="text-xl font-bold text-red-700 mt-1">
-            $
+            {userCountry !== "Venezuela" ? mainCurrency + " " : "$"}
             {debts
               .filter(
-                (d) => d.type === "I_OWE" && !d.isPaid && d.currency === "USD",
+                (d) =>
+                  d.type === "I_OWE" &&
+                  !d.isPaid &&
+                  (userCountry === "Venezuela" ? d.currency === "USD" : true),
               )
               .reduce((a, b) => a + (b.amount - b.paidAmount), 0)}
           </p>
@@ -911,11 +1002,13 @@ function App() {
             Por Cobrar
           </span>
           <p className="text-xl font-bold text-emerald-700 mt-1">
-            $
+            {userCountry !== "Venezuela" ? mainCurrency + " " : "$"}
             {debts
               .filter(
                 (d) =>
-                  d.type === "OWES_ME" && !d.isPaid && d.currency === "USD",
+                  d.type === "OWES_ME" &&
+                  !d.isPaid &&
+                  (userCountry === "Venezuela" ? d.currency === "USD" : true),
               )
               .reduce((a, b) => a + (b.amount - b.paidAmount), 0)}
           </p>
@@ -939,7 +1032,11 @@ function App() {
               </div>
               <div className="flex flex-col items-end">
                 <p className="font-bold text-lg">
-                  {debt.currency === "USD" ? "$" : "Bs."}
+                  {userCountry === "Venezuela"
+                    ? debt.currency === "USD"
+                      ? "$"
+                      : "Bs."
+                    : mainCurrency + " "}
                   {debt.amount}
                 </p>
                 <button
@@ -993,13 +1090,13 @@ function App() {
   );
 
   const renderAdvisor = () => (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-24">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-3xl text-white shadow-lg">
         <Bot className="w-12 h-12 mb-4 bg-white/20 p-2 rounded-xl" />
         <h2 className="text-2xl font-bold">Asistente Financiero</h2>
         <p className="text-blue-100 mt-2">
-          Utiliza la IA para analizar tus finanzas en VES y USD y obtener
-          recomendaciones personalizadas.
+          Utiliza la IA para analizar tus finanzas y obtener recomendaciones
+          personalizadas.
         </p>
 
         <button
@@ -1043,46 +1140,43 @@ function App() {
         {activeTab === "advisor" && renderAdvisor()}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-40 pb-safe">
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "dashboard" ? "text-primary" : "text-slate-400"}`}
-        >
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Inicio</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("accounts")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "accounts" ? "text-primary" : "text-slate-400"}`}
-        >
-          <Wallet className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Cuentas</span>
-        </button>
-        <div className="w-12"></div>
-        <button
-          onClick={() => setActiveTab("debts")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "debts" ? "text-primary" : "text-slate-400"}`}
-        >
-          <ArrowRightLeft className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Deudas</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("advisor")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "advisor" ? "text-primary" : "text-slate-400"}`}
-        >
-          <Bot className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Asesor</span>
-        </button>
-      </nav>
+      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-slate-100 px-6 py-2 flex items-center z-40 pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+        {/* Botón Burbuja Flotante a la Izquierda */}
+        <div className="relative -top-4 ml-2 mr-6 shrink-0">
+          <button
+            onClick={openNewTransaction}
+            className="w-14 h-14 bg-primary rounded-full shadow-xl shadow-blue-900/20 text-white flex items-center justify-center border-4 border-white hover:scale-105 transition-transform"
+            title="Nueva Transacción"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </div>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <button
-          onClick={openNewTransaction}
-          className="w-14 h-14 bg-primary rounded-full shadow-xl shadow-blue-900/20 text-white flex items-center justify-center border-4 border-gray-50 hover:scale-105 transition-transform"
-        >
-          <Plus className="w-7 h-7" />
-        </button>
-      </div>
+        {/* Contenedor de las pestañas alineado a la derecha, ocupando el resto del espacio */}
+        <div className="flex items-center justify-around flex-1">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "dashboard" ? "text-primary" : "text-slate-400"}`}
+          >
+            <LayoutDashboard className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Inicio</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("accounts")}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "accounts" ? "text-primary" : "text-slate-400"}`}
+          >
+            <Wallet className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Cuentas</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("debts")}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "debts" ? "text-primary" : "text-slate-400"}`}
+          >
+            <ArrowRightLeft className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Deudas</span>
+          </button>
+        </div>
+      </nav>
 
       <TransactionModal
         isOpen={isTxModalOpen}
@@ -1163,6 +1257,8 @@ function App() {
         message={confirmationData.message}
         isDanger={confirmationData.isDanger}
       />
+
+      <SetupModal onSetupComplete={handleSetupComplete} />
     </div>
   );
 }

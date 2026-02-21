@@ -25,9 +25,12 @@ const COLORS = [
 const ICONS = ['💵', '🏦', '💳', '🐖', '💰', '🏠', '🚗', '🎓', '✈️', '🛒'];
 
 export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData }) => {
+  const userCountry = localStorage.getItem('user_country') || 'Venezuela';
+  const mainCurrency = localStorage.getItem('main_currency') || 'USD';
+
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
-  const [currency, setCurrency] = useState<Currency>(Currency.USD);
+  const [currency, setCurrency] = useState<Currency | string>(Currency.USD);
   const [type, setType] = useState<AccountType>(AccountType.BANK);
   const [color, setColor] = useState(COLORS[0].hex);
   const [icon, setIcon] = useState(ICONS[1]);
@@ -44,13 +47,13 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
       } else {
         setName('');
         setBalance('');
-        setCurrency(Currency.USD);
+        setCurrency(userCountry === 'Venezuela' ? Currency.USD : mainCurrency);
         setType(AccountType.BANK);
         setColor(COLORS[0].hex);
         setIcon('🏦');
       }
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, userCountry, mainCurrency]);
 
   if (!isOpen) return null;
 
@@ -60,7 +63,7 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
       id: initialData?.id || crypto.randomUUID(),
       name,
       balance: parseFloat(balance) || 0,
-      currency,
+      currency: currency as Currency,
       type,
       color,
       icon,
@@ -111,12 +114,18 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
               <label className="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
               <select
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value as Currency)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"
-                disabled={!!initialData} // Currency shouldn't change easily to avoid mess
+                onChange={(e) => setCurrency(e.target.value)}
+                className={`w-full p-3 bg-slate-50 border border-slate-200 rounded-xl ${userCountry !== 'Venezuela' || !!initialData ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={!!initialData || userCountry !== 'Venezuela'} // Si se edita o no es Vzla, no se cambia
               >
-                <option value={Currency.USD}>USD</option>
-                <option value={Currency.VES}>VES</option>
+                {userCountry === 'Venezuela' ? (
+                    <>
+                        <option value={Currency.USD}>USD</option>
+                        <option value={Currency.VES}>VES</option>
+                    </>
+                ) : (
+                    <option value={mainCurrency}>{mainCurrency}</option>
+                )}
               </select>
             </div>
           </div>

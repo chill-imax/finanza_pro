@@ -37,14 +37,24 @@ export const TransactionModal: React.FC<Props> = ({
   initialData,
   onAddCategory,
 }) => {
+  const userCountry = localStorage.getItem("user_country") || "Venezuela";
+  const mainCurrency = localStorage.getItem("main_currency") || "USD";
+
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
+
+  // Input State
   const [amount, setAmount] = useState("");
-  const [inputCurrency, setInputCurrency] = useState<Currency>(Currency.USD);
+  const [inputCurrency, setInputCurrency] = useState<Currency | string>(
+    Currency.USD,
+  );
+
   const [accountId, setAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Recurring State
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState<Frequency>(Frequency.MONTHLY);
   const [customInterval, setCustomInterval] = useState(1);
@@ -64,7 +74,13 @@ export const TransactionModal: React.FC<Props> = ({
         const initialAcc = accounts.find(
           (a) => a.id === (initialData.accountId || accounts[0]?.id),
         );
-        setInputCurrency(initialAcc?.currency || Currency.USD);
+
+        setInputCurrency(
+          userCountry === "Venezuela"
+            ? initialAcc?.currency || Currency.USD
+            : mainCurrency,
+        );
+
         setToAccountId(
           initialData.toAccountId ||
             (accounts.length > 1 ? accounts[1].id : ""),
@@ -76,7 +92,13 @@ export const TransactionModal: React.FC<Props> = ({
         setAmount("");
         setAccountId(accounts[0]?.id || "");
         const initialAcc = accounts[0];
-        setInputCurrency(initialAcc?.currency || Currency.USD);
+
+        setInputCurrency(
+          userCountry === "Venezuela"
+            ? initialAcc?.currency || Currency.USD
+            : mainCurrency,
+        );
+
         setToAccountId(accounts.length > 1 ? accounts[1].id : "");
         setCategoryId(categories[0]?.id || "");
         setNote("");
@@ -88,19 +110,28 @@ export const TransactionModal: React.FC<Props> = ({
       setCustomInterval(1);
       setCustomUnit("MONTHS");
     }
-  }, [isOpen, initialData, accounts, currentExchangeRate, categories]);
+  }, [
+    isOpen,
+    initialData,
+    accounts,
+    currentExchangeRate,
+    categories,
+    userCountry,
+    mainCurrency,
+  ]);
 
   const sourceAccount = accounts.find((a) => a.id === accountId);
   const targetAccount = accounts.find((a) => a.id === toAccountId);
 
   const isRateNeeded = useMemo(() => {
+    if (userCountry !== "Venezuela") return false; // Solo aplica para Venezuela
     if (!sourceAccount) return false;
     if (inputCurrency !== sourceAccount.currency) return true;
     if (type === TransactionType.TRANSFER && targetAccount) {
       if (sourceAccount.currency !== targetAccount.currency) return true;
     }
     return false;
-  }, [inputCurrency, sourceAccount, targetAccount, type]);
+  }, [inputCurrency, sourceAccount, targetAccount, type, userCountry]);
 
   if (!isOpen) return null;
 
@@ -109,7 +140,11 @@ export const TransactionModal: React.FC<Props> = ({
     if (!sourceAccount) return;
     let finalAmount = parseFloat(amount);
     let finalRate = isRateNeeded ? parseFloat(customExchangeRate) : undefined;
-    if (inputCurrency !== sourceAccount.currency) {
+
+    if (
+      userCountry === "Venezuela" &&
+      inputCurrency !== sourceAccount.currency
+    ) {
       if (
         inputCurrency === Currency.USD &&
         sourceAccount.currency === Currency.VES
@@ -146,7 +181,11 @@ export const TransactionModal: React.FC<Props> = ({
     const rate = parseFloat(customExchangeRate) || currentExchangeRate;
     let sourceDeduction = val;
     let sourceCurrency = inputCurrency;
-    if (inputCurrency !== sourceAccount.currency) {
+
+    if (
+      userCountry === "Venezuela" &&
+      inputCurrency !== sourceAccount.currency
+    ) {
       if (
         inputCurrency === Currency.USD &&
         sourceAccount.currency === Currency.VES
@@ -164,7 +203,12 @@ export const TransactionModal: React.FC<Props> = ({
       sourceCurrency = sourceAccount.currency;
     }
     let targetAddition = sourceDeduction;
-    if (type === TransactionType.TRANSFER && targetAccount) {
+
+    if (
+      userCountry === "Venezuela" &&
+      type === TransactionType.TRANSFER &&
+      targetAccount
+    ) {
       if (sourceAccount.currency !== targetAccount.currency) {
         if (
           sourceAccount.currency === Currency.USD &&
@@ -179,25 +223,29 @@ export const TransactionModal: React.FC<Props> = ({
         }
       }
     }
+
+    const formatCurrency = (amount: number, currencyCode: string) => {
+      if (userCountry === "Venezuela") {
+        return currencyCode === "USD"
+          ? `$${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+          : `Bs.${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+      }
+      return `${mainCurrency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    };
+
     return (
       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1 mt-4">
         <div className="flex justify-between">
           <span>Se descontará ({sourceAccount.name}):</span>
           <span className="font-bold text-red-600">
-            - {sourceAccount.currency === "USD" ? "$" : "Bs."}
-            {sourceDeduction.toLocaleString(undefined, {
-              maximumFractionDigits: 2,
-            })}
+            - {formatCurrency(sourceDeduction, sourceAccount.currency)}
           </span>
         </div>
         {type === TransactionType.TRANSFER && targetAccount && (
           <div className="flex justify-between pt-1 border-t border-slate-200">
             <span>Se recibirá ({targetAccount.name}):</span>
             <span className="font-bold text-emerald-600">
-              + {targetAccount.currency === "USD" ? "$" : "Bs."}
-              {targetAddition.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
+              + {formatCurrency(targetAddition, targetAccount.currency)}
             </span>
           </div>
         )}
@@ -261,8 +309,12 @@ export const TransactionModal: React.FC<Props> = ({
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
-                  {inputCurrency === "USD" ? "$" : "Bs."}
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                  {userCountry === "Venezuela"
+                    ? inputCurrency === "USD"
+                      ? "$"
+                      : "Bs."
+                    : mainCurrency}
                 </span>
                 <input
                   type="number"
@@ -271,18 +323,25 @@ export const TransactionModal: React.FC<Props> = ({
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-xl font-bold text-slate-800"
+                  className={`w-full ${userCountry === "Venezuela" ? "pl-8" : "pl-12"} pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-xl font-bold text-slate-800`}
                   placeholder="0.00"
                 />
               </div>
               <div className="w-24">
                 <select
                   value={inputCurrency}
-                  onChange={(e) => setInputCurrency(e.target.value as Currency)}
-                  className="w-full h-full bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700 text-center focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                  onChange={(e) => setInputCurrency(e.target.value)}
+                  disabled={userCountry !== "Venezuela"}
+                  className={`w-full h-full bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700 text-center focus:ring-2 focus:ring-blue-500 outline-none appearance-none ${userCountry !== "Venezuela" ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
-                  <option value={Currency.USD}>USD</option>
-                  <option value={Currency.VES}>VES</option>
+                  {userCountry === "Venezuela" ? (
+                    <>
+                      <option value={Currency.USD}>USD</option>
+                      <option value={Currency.VES}>VES</option>
+                    </>
+                  ) : (
+                    <option value={mainCurrency}>{mainCurrency}</option>
+                  )}
                 </select>
               </div>
             </div>
