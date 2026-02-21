@@ -9,10 +9,21 @@ interface Props {
 }
 
 export const AccountCard: React.FC<Props> = ({ account, onClick, onEdit }) => {
+  const userCountry = localStorage.getItem('user_country') || 'Venezuela';
+
   // Use custom color if available, else fallback
   const bgColorStyle = account.color ? { backgroundColor: account.color } : {};
   const defaultBgClass = account.currency === Currency.USD ? 'bg-emerald-500' : 'bg-blue-500';
   
+  // Función para determinar el prefijo de la moneda
+  const getCurrencySymbol = () => {
+    if (userCountry === 'Venezuela') {
+      return account.currency === 'USD' ? '$' : 'Bs.';
+    }
+    // Si no es Venezuela, mostramos las siglas de la moneda y un espacio (Ej: "ARS 500")
+    return `${account.currency} `;
+  };
+
   return (
     <div 
       onClick={onClick}
@@ -21,7 +32,7 @@ export const AccountCard: React.FC<Props> = ({ account, onClick, onEdit }) => {
     >
       <div className="flex justify-between items-start mb-2">
         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl backdrop-blur-sm">
-          {account.icon || (account.currency === 'USD' ? '$' : 'Bs')}
+          {account.icon || getCurrencySymbol().trim()}
         </div>
         <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded text-white uppercase backdrop-blur-sm">
           {account.currency}
@@ -29,7 +40,7 @@ export const AccountCard: React.FC<Props> = ({ account, onClick, onEdit }) => {
       </div>
       <h3 className="font-medium text-white/90 truncate pr-6">{account.name}</h3>
       <p className="text-2xl font-bold mt-1">
-        {account.currency === 'USD' ? '$' : 'Bs.'} {account.balance.toLocaleString()}
+        {getCurrencySymbol()}{account.balance.toLocaleString()}
       </p>
 
       {/* Edit Button */}

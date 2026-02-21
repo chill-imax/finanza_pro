@@ -164,6 +164,15 @@ export function useAppState() {
                 color: "#8b5cf6",
                 icon: "📱",
               },
+              {
+                id: "4",
+                name: "Ahorros",
+                type: AccountType.SAVINGS,
+                currency: Currency.USD,
+                balance: 0,
+                color: "#8b5cf6",
+                icon: "🐖",
+              },
             ]
           : [
               {
