@@ -257,17 +257,20 @@ export const TransactionModal: React.FC<Props> = ({
       );
     }
 
+    // AQUI ESTÁ LA CORRECCIÓN: Dependiendo del TIPO, decimos "Se depositará" o "Se descontará"
     return (
       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1 mt-4">
         <div className="flex justify-between">
-          <span>Se descontará ({sourceAccount.name}):</span>
-          <span className="font-bold text-red-600">
-            - {formatCurrency(sourceDeduction, sourceAccount.currency)}
+          <span className={type === TransactionType.INCOME ? "text-emerald-700" : ""}>
+            {type === TransactionType.INCOME ? 'Se depositará en' : 'Se descontará de'} ({sourceAccount.name}):
+          </span>
+          <span className={`font-bold ${type === TransactionType.INCOME ? 'text-emerald-600' : 'text-red-600'}`}>
+            {type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(sourceDeduction, sourceAccount.currency)}
           </span>
         </div>
         {type === TransactionType.TRANSFER && targetAccount && (
           <div className="flex justify-between pt-1 border-t border-slate-200">
-            <span>Se recibirá ({targetAccount.name}):</span>
+            <span>Se recibirá en ({targetAccount.name}):</span>
             <span className="font-bold text-emerald-600">
               + {formatCurrency(targetAddition, targetAccount.currency)}
             </span>

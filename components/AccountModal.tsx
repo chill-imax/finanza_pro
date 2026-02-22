@@ -35,6 +35,10 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
   const [color, setColor] = useState(COLORS[0].hex);
   const [icon, setIcon] = useState(ICONS[1]);
 
+  // CORRECCIÓN: Validamos si realmente estamos editando (la cuenta ya tiene un nombre guardado)
+  // o si es una cuenta nueva (initialData.name está vacío).
+  const isEditing = !!initialData && initialData.name !== '';
+
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
@@ -76,7 +80,7 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto no-scrollbar">
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-lg font-bold text-slate-800">
-            {initialData ? 'Editar Cuenta' : 'Nueva Cuenta'}
+            {isEditing ? 'Editar Cuenta' : 'Nueva Cuenta'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
             <X className="w-5 h-5 text-slate-500" />
@@ -99,7 +103,7 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                {initialData ? 'Saldo Actual (Editar)' : 'Saldo Inicial'}
+                {isEditing ? 'Saldo Actual (Editar)' : 'Saldo Inicial'}
               </label>
               <input
                 type="number"
@@ -115,8 +119,9 @@ export const AccountModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className={`w-full p-3 bg-slate-50 border border-slate-200 rounded-xl ${userCountry !== 'Venezuela' || !!initialData ? 'opacity-70 cursor-not-allowed' : ''}`}
-                disabled={!!initialData || userCountry !== 'Venezuela'} // Si se edita o no es Vzla, no se cambia
+                // Se deshabilita solo si estamos editando o si NO es Venezuela
+                className={`w-full p-3 bg-slate-50 border border-slate-200 rounded-xl ${userCountry !== 'Venezuela' || isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isEditing || userCountry !== 'Venezuela'} 
               >
                 {userCountry === 'Venezuela' ? (
                     <>
