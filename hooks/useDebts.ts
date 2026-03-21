@@ -60,7 +60,29 @@ export function useDebts({
     exchangeRate?: number,
   ) => {
     if (!payDebtData) return;
+    
+    // 1. Encontramos la cuenta para saber en qué moneda está
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
 
+    const isPaying = payDebtData.type === "I_OWE";
+
+    // 2. Calculamos cuánto se descuenta de la cuenta bancaria realmente
+    let deductionAmount = amount;
+    if (account.currency !== payDebtData.currency && exchangeRate) {
+      if (
+        payDebtData.currency === Currency.USD &&
+        account.currency === Currency.VES
+      )
+        deductionAmount = amount * exchangeRate;
+      else if (
+        payDebtData.currency === Currency.VES &&
+        account.currency === Currency.USD
+      )
+        deductionAmount = amount / exchangeRate;
+    }
+
+    // 3. Actualizamos la deuda
     setDebts((prev) =>
       prev.map((d) => {
         if (d.id !== payDebtData.id) return d;
@@ -69,23 +91,10 @@ export function useDebts({
       }),
     );
 
-    const isPaying = payDebtData.type === "I_OWE";
+    // 4. Actualizamos la cuenta
     setAccounts((prev) =>
       prev.map((acc) => {
         if (acc.id !== accountId) return acc;
-        let deductionAmount = amount;
-        if (acc.currency !== payDebtData.currency && exchangeRate) {
-          if (
-            payDebtData.currency === Currency.USD &&
-            acc.currency === Currency.VES
-          )
-            deductionAmount = amount * exchangeRate;
-          else if (
-            payDebtData.currency === Currency.VES &&
-            acc.currency === Currency.USD
-          )
-            deductionAmount = amount / exchangeRate;
-        }
         return {
           ...acc,
           balance: isPaying
@@ -95,16 +104,21 @@ export function useDebts({
       }),
     );
 
+    // 5. Creamos la transacción
     const newTx: Transaction = {
       id: crypto.randomUUID(),
-      amount,
-      currency: payDebtData.currency,
+      amount: deductionAmount,
+      currency: account.currency, 
       type: isPaying ? TransactionType.EXPENSE : TransactionType.INCOME,
       accountId,
       categoryId: "10",
       date: new Date().toISOString().split("T")[0],
-      note: `${isPaying ? "Pago de deuda" : "Cobro de deuda"}: ${payDebtData.name} (Tasa: ${exchangeRate || "N/A"})`,
+      note: `${isPaying ? "Pago a deuda" : "Cobro de deuda"}: ${payDebtData.name} (Abonado: ${amount} ${payDebtData.currency})`,
+      linkedDebtId: payDebtData.id,
+      debtPaymentAmount: amount, 
+      exchangeRate,
     };
+    
     setTransactions((prev) => [newTx, ...prev]);
     setPayDebtData(null);
     updateStreak();

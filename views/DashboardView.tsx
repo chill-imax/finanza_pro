@@ -130,7 +130,7 @@ export const DashboardView: React.FC<Props> = ({
                   En Dólares
                 </span>
                 <span className="font-semibold">
-                  ${totalBalanceUSD.toLocaleString()}
+                  ${totalBalanceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="w-px bg-white/10" />
@@ -139,7 +139,7 @@ export const DashboardView: React.FC<Props> = ({
                   En Bolívares
                 </span>
                 <span className="font-semibold">
-                  Bs. {totalBalanceVES.toLocaleString()}
+                  Bs. {totalBalanceVES.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -235,7 +235,7 @@ export const DashboardView: React.FC<Props> = ({
                         ? "$"
                         : "Bs."
                       : mainCurrency + " "}
-                    {tx.amount.toLocaleString()}
+                    {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
               );
@@ -269,7 +269,7 @@ export const DashboardView: React.FC<Props> = ({
                     />
                   ))}
                 </Pie>
-                <RechartsTooltip />
+                <RechartsTooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
