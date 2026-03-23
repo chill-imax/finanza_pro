@@ -110,21 +110,34 @@ export function useAppState() {
   }, [totalBalanceUSD, totalBalanceVES, bcvRate]);
 
   // ── Expenses chart data ─────────────────────────────────────────────
+  // AHORA: Incluye VES convertidos a USD usando la tasa de la transacción (o bcvRate de respaldo)
   const expensesData = useMemo(() => {
     const dataMap: Record<string, number> = {};
+    
     transactions
-      .filter(
-        (t) =>
-          t.type === TransactionType.EXPENSE &&
-          (userCountry === "Venezuela" ? t.currency === "USD" : true),
-      )
+      .filter((t) => t.type === TransactionType.EXPENSE)
       .forEach((t) => {
-        const catName =
-          categories.find((c) => c.id === t.categoryId)?.name || "Otros";
-        dataMap[catName] = (dataMap[catName] || 0) + t.amount;
+        const catName = categories.find((c) => c.id === t.categoryId)?.name || "Otros";
+        
+        let amountInUSD = t.amount;
+        
+        if (userCountry === "Venezuela" && t.currency === Currency.VES) {
+            // Usa la tasa de cambio guardada en la transacción, si no existe usa bcvRate.
+            // Protegemos contra división por cero
+            const rate = t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : bcvRate; 
+            if (rate > 0) {
+                amountInUSD = t.amount / rate;
+            }
+        }
+
+        dataMap[catName] = (dataMap[catName] || 0) + amountInUSD;
       });
-    return Object.entries(dataMap).map(([name, value]) => ({ name, value }));
-  }, [transactions, categories, userCountry]);
+      
+    return Object.entries(dataMap)
+        // Opcional: Filtrar montos muy pequeños o ceros (debido a conversiones)
+        .filter(([_, value]) => value > 0.01) 
+        .map(([name, value]) => ({ name, value }));
+  }, [transactions, categories, userCountry, bcvRate]);
 
   // ── Setup ───────────────────────────────────────────────────────────
   const handleSetupComplete = (country: string, currency: string) => {

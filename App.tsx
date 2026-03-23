@@ -81,11 +81,16 @@ function App() {
   // ── Modal state ────────────────────────────────────────────────────
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txModalInitialData, setTxModalInitialData] = useState<any>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+
   const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
   const [payDebtData, setPayDebtData] = useState<Debt | null>(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
   const [isTxListModalOpen, setIsTxListModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
@@ -119,7 +124,7 @@ function App() {
     setStreakCount,
   );
 
-  const { addTransaction, deleteTransaction, processRecurring } =
+  const { addTransaction, deleteTransaction, editTransaction, processRecurring } =
     useTransactions({
       accounts,
       setAccounts,
@@ -129,6 +134,8 @@ function App() {
       setRecurringTransactions,
       setSelectedTransaction,
       updateStreak,
+      debts,    // NUEVO: Pasamos debts
+      setDebts  // NUEVO: Pasamos setDebts
     });
 
   const { addDebt, deleteDebt, handleDebtPayment } = useDebts({
@@ -145,19 +152,16 @@ function App() {
 
   useEffect(() => {
     if (recurringTransactions.length > 0) processRecurring();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   // ── Account actions ────────────────────────────────────────────────
-  // BUG FIX: antes faltaba cerrar el modal en el caso de cuenta nueva
   const saveAccount = (account: Account) => {
     if (editingAccount && editingAccount.name !== "") {
-      // Editar cuenta existente
       setAccounts((prev) =>
         prev.map((a) => (a.id === account.id ? account : a)),
       );
       showToast("success", "Cuenta actualizada", account.name);
     } else {
-      // Crear cuenta nueva
       setAccounts((prev) => [...prev, account]);
       showToast("success", "Cuenta creada", account.name);
     }
@@ -188,9 +192,53 @@ function App() {
     });
   };
 
-  const saveCategory = (category: Category) => {
-    setCategories((prev) => [...prev, category]);
-    showToast("success", "Categoría creada", category.name);
+  // Lógica para guardar/editar categorías
+  const saveCategory = (categoryData: Category) => {
+    setCategories((prev) => {
+      const exists = prev.find(c => c.id === categoryData.id);
+      if (exists) {
+        return prev.map(c => c.id === categoryData.id ? categoryData : c);
+      } else {
+        return [...prev, categoryData];
+      }
+    });
+    showToast("success", editingCategory ? "Categoría actualizada" : "Categoría creada", categoryData.name);
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategoryAttempt = (categoryId: string) => {
+    const categoryToDelete = categories.find(c => c.id === categoryId);
+    if (!categoryToDelete) return;
+
+    // NUEVO: Protegemos las categorías por defecto
+    if (!categoryToDelete.isCustom) {
+      showToast(
+        "error", 
+        "No permitido", 
+        `La categoría "${categoryToDelete.name}" es del sistema y no puede ser eliminada.`
+      );
+      return; 
+    }
+
+    const isInUse = transactions.some(t => t.categoryId === categoryId);
+    if (isInUse) {
+      showToast(
+        "error", 
+        "No se puede eliminar", 
+        `La categoría "${categoryToDelete.name}" ya está siendo usada en tus movimientos.`
+      );
+      return; 
+    }
+
+    openConfirmation({
+      title: "Eliminar Categoría",
+      message: `¿Estás seguro de eliminar la categoría "${categoryToDelete.name}"?`,
+      isDanger: true,
+      onConfirm: () => {
+        setCategories(prev => prev.filter(c => c.id !== categoryId));
+        showToast("success", "Categoría eliminada", "");
+      }
+    });
   };
 
   // ── Other actions ──────────────────────────────────────────────────
@@ -218,6 +266,7 @@ function App() {
       note: "Pago a mi mismo (Ahorro)",
       isSavingsMode: true,
     });
+    setEditingTransactionId(null);
     setIsTxModalOpen(true);
   };
 
@@ -227,6 +276,33 @@ function App() {
       return;
     }
     setTxModalInitialData(null);
+    setEditingTransactionId(null);
+    setIsTxModalOpen(true);
+  };
+
+  const handleSaveTransaction = (data: any) => {
+    if (editingTransactionId) {
+      editTransaction(editingTransactionId, data);
+      showToast("success", "Transacción actualizada", "");
+    } else {
+      addTransaction(data);
+      showToast("success", "Transacción guardada", "");
+    }
+    setEditingTransactionId(null);
+    setIsTxModalOpen(false);
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(null); 
+    setEditingTransactionId(transaction.id);
+    setTxModalInitialData({
+      type: transaction.type,
+      amount: transaction.amount,
+      accountId: transaction.accountId,
+      toAccountId: transaction.toAccountId,
+      categoryId: transaction.categoryId,
+      note: transaction.note,
+    });
     setIsTxModalOpen(true);
   };
 
@@ -358,13 +434,23 @@ function App() {
       {/* Modals */}
       <TransactionModal
         isOpen={isTxModalOpen}
-        onClose={() => setIsTxModalOpen(false)}
+        onClose={() => {
+          setIsTxModalOpen(false);
+          setEditingTransactionId(null);
+        }}
         accounts={accounts}
         categories={categories}
-        onSave={addTransaction}
+        onSave={handleSaveTransaction} 
         currentExchangeRate={bcvRate}
         initialData={txModalInitialData}
-        onAddCategory={() => setIsCategoryModalOpen(true)}
+        onAddCategory={() => {
+            setEditingCategory(null);
+            setIsCategoryModalOpen(true);
+        }}
+        onEditCategory={(cat) => {
+            setEditingCategory(cat);
+            setIsCategoryModalOpen(true);
+        }}
       />
       <DebtModal
         isOpen={isDebtModalOpen}
@@ -388,11 +474,18 @@ function App() {
         onSave={saveAccount}
         initialData={editingAccount}
       />
+      
       <CategoryModal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setEditingCategory(null);
+        }}
         onSave={saveCategory}
+        initialCategory={editingCategory}
+        onDelete={handleDeleteCategoryAttempt}
       />
+      
       <TransactionListModal
         isOpen={isTxListModalOpen}
         onClose={() => setIsTxListModalOpen(false)}
@@ -401,12 +494,14 @@ function App() {
         accounts={accounts}
         onSelectTransaction={setSelectedTransaction}
       />
+      
       <TransactionDetailModal
         isOpen={!!selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
         transaction={selectedTransaction}
         categories={categories}
         accounts={accounts}
+        onEdit={handleEditTransaction}
         onDelete={(id) =>
           openConfirmation({
             title: "Eliminar Transacción",

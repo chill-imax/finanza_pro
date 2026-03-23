@@ -59,7 +59,7 @@ export const DebtsView: React.FC<Props> = ({
           </span>
           <p className="text-xl font-bold text-red-700 mt-1">
             {currencyPrefix}
-            {sumDebts("I_OWE")}
+            {sumDebts("I_OWE").toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </p>
         </div>
         <div className="flex-1 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
@@ -68,7 +68,7 @@ export const DebtsView: React.FC<Props> = ({
           </span>
           <p className="text-xl font-bold text-emerald-700 mt-1">
             {currencyPrefix}
-            {sumDebts("OWES_ME")}
+            {sumDebts("OWES_ME").toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -103,7 +103,7 @@ export const DebtsView: React.FC<Props> = ({
                       ? "$"
                       : "Bs."
                     : mainCurrency + " "}
-                  {debt.amount}
+                  {debt.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
                 <button
                   onClick={() => onDeleteDebt(debt.id)}
@@ -126,8 +126,8 @@ export const DebtsView: React.FC<Props> = ({
               />
             </div>
             <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
-              <span>Pagado: {debt.paidAmount}</span>
-              <span>Restante: {debt.amount - debt.paidAmount}</span>
+              <span>Pagado: {debt.paidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span>Restante: {(debt.amount - debt.paidAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </div>
             {!debt.isPaid &&
               (hasAccounts ? (

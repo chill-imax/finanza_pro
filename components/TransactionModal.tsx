@@ -13,6 +13,7 @@ import {
   Leaf,
   Sprout,
   TrendingUp,
+  Edit2
 } from "lucide-react";
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
     isSavingsMode?: boolean;
   }> | null;
   onAddCategory: () => void;
+  onEditCategory: (category: Category) => void;
 }
 
 export const TransactionModal: React.FC<Props> = ({
@@ -43,6 +45,7 @@ export const TransactionModal: React.FC<Props> = ({
   currentExchangeRate,
   initialData,
   onAddCategory,
+  onEditCategory,
 }) => {
   const userCountry = localStorage.getItem("user_country") || "Venezuela";
   const mainCurrency = localStorage.getItem("main_currency") || "USD";
@@ -64,6 +67,8 @@ export const TransactionModal: React.FC<Props> = ({
     "DAYS" | "WEEKS" | "MONTHS" | "YEARS"
   >("MONTHS");
   const [customExchangeRate, setCustomExchangeRate] = useState<string>("");
+
+  const [isCategoryEditMode, setIsCategoryEditMode] = useState(false);
 
   const isSavings = initialData?.isSavingsMode;
 
@@ -107,6 +112,8 @@ export const TransactionModal: React.FC<Props> = ({
       setFrequency(Frequency.MONTHLY);
       setCustomInterval(1);
       setCustomUnit("MONTHS");
+      
+      setIsCategoryEditMode(false);
     }
   }, [
     isOpen,
@@ -136,8 +143,14 @@ export const TransactionModal: React.FC<Props> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceAccount) return;
+    
     let finalAmount = parseFloat(amount);
-    let finalRate = isRateNeeded ? parseFloat(customExchangeRate) : undefined;
+    
+    // NUEVO: Siempre guardar la tasa en Venezuela
+    let finalRate: number | undefined = undefined;
+    if (userCountry === "Venezuela") {
+       finalRate = parseFloat(customExchangeRate) || currentExchangeRate;
+    }
 
     if (
       userCountry === "Venezuela" &&
@@ -147,12 +160,12 @@ export const TransactionModal: React.FC<Props> = ({
         inputCurrency === Currency.USD &&
         sourceAccount.currency === Currency.VES
       ) {
-        finalAmount = parseFloat(amount) * parseFloat(customExchangeRate);
+        finalAmount = parseFloat(amount) * (finalRate || currentExchangeRate);
       } else if (
         inputCurrency === Currency.VES &&
         sourceAccount.currency === Currency.USD
       ) {
-        finalAmount = parseFloat(amount) / parseFloat(customExchangeRate);
+        finalAmount = parseFloat(amount) / (finalRate || currentExchangeRate);
       }
     }
 
@@ -165,7 +178,7 @@ export const TransactionModal: React.FC<Props> = ({
       categoryId: type === TransactionType.TRANSFER ? "TRANSFER" : categoryId,
       note,
       date,
-      exchangeRate: finalRate,
+      exchangeRate: finalRate, // Se envía siempre la tasa si estás en Venezuela
       isRecurring,
       frequency,
       customInterval,
@@ -257,7 +270,6 @@ export const TransactionModal: React.FC<Props> = ({
       );
     }
 
-    // AQUI ESTÁ LA CORRECCIÓN: Dependiendo del TIPO, decimos "Se depositará" o "Se descontará"
     return (
       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1 mt-4">
         <div className="flex justify-between">
@@ -280,7 +292,6 @@ export const TransactionModal: React.FC<Props> = ({
     );
   };
 
-  // ─── SAVINGS MODE RENDER ──────────────────────────────────────────────────
   if (isSavings) {
     return (
       <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -291,19 +302,13 @@ export const TransactionModal: React.FC<Props> = ({
               "linear-gradient(160deg, #064e3b 0%, #065f46 40%, #047857 100%)",
           }}
         >
-          {/* Header savings */}
           <div className="relative px-6 pt-8 pb-6 text-white overflow-hidden">
-            {/* decorative blobs */}
-            <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
-            <div className="absolute top-12 -left-4 w-20 h-20 bg-emerald-300/10 rounded-full blur-xl" />
-
             <button
               onClick={onClose}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             >
               <X className="w-4 h-4 text-white" />
             </button>
-
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center">
                 <Sprout className="w-5 h-5 text-emerald-200" />
@@ -317,35 +322,16 @@ export const TransactionModal: React.FC<Props> = ({
                 </h2>
               </div>
             </div>
-
             <p className="text-emerald-200/80 text-xs leading-relaxed">
               Transfiere ahora a tu cuenta de ahorros antes de gastar. ¡Tu yo
               del futuro te lo agradecerá! 🌱
             </p>
-
-            {/* stat pills */}
-            <div className="flex gap-2 mt-4">
-              <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full">
-                <TrendingUp className="w-3 h-3 text-emerald-300" />
-                <span className="text-xs text-emerald-200 font-medium">
-                  Hábito probado
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full">
-                <Leaf className="w-3 h-3 text-emerald-300" />
-                <span className="text-xs text-emerald-200 font-medium">
-                  Sin estrés
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* Form savings */}
           <form
             onSubmit={handleSubmit}
             className="bg-white rounded-t-3xl px-5 pt-6 pb-8 space-y-4"
           >
-            {/* Amount */}
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 ¿Cuánto vas a ahorrarte hoy?
@@ -385,7 +371,6 @@ export const TransactionModal: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Desde */}
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Desde
@@ -403,7 +388,6 @@ export const TransactionModal: React.FC<Props> = ({
               </select>
             </div>
 
-            {/* Hacia (savings account, locked feel) */}
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Tu hucha 🐖
@@ -423,7 +407,6 @@ export const TransactionModal: React.FC<Props> = ({
               </select>
             </div>
 
-            {/* Exchange rate if needed */}
             {isRateNeeded && (
               <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 space-y-2">
                 <div className="flex items-center gap-2 text-emerald-700 font-medium text-sm">
@@ -443,7 +426,6 @@ export const TransactionModal: React.FC<Props> = ({
 
             {getSummary()}
 
-            {/* Note */}
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Nota (opcional)
@@ -457,7 +439,6 @@ export const TransactionModal: React.FC<Props> = ({
               />
             </div>
 
-            {/* Date */}
             <input
               type="date"
               required
@@ -466,7 +447,6 @@ export const TransactionModal: React.FC<Props> = ({
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
             />
 
-            {/* Submit */}
             <button
               type="submit"
               className="w-full py-4 font-black rounded-2xl shadow-lg transition-all active:scale-95 text-white text-base"
@@ -486,7 +466,6 @@ export const TransactionModal: React.FC<Props> = ({
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto no-scrollbar">
-        {/* Header normal */}
         <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-white">
           <h2 className="text-lg font-bold text-slate-800">
             Nueva Transacción
@@ -500,7 +479,6 @@ export const TransactionModal: React.FC<Props> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* Type selector */}
           <div className="flex bg-slate-100 rounded-lg p-1">
             <button
               type="button"
@@ -525,7 +503,6 @@ export const TransactionModal: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Monto
@@ -570,7 +547,6 @@ export const TransactionModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Accounts */}
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -610,7 +586,6 @@ export const TransactionModal: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Exchange rate */}
           {isRateNeeded && (
             <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 space-y-3 animate-fade-in">
               <div className="flex items-center gap-2 text-blue-700 font-medium text-sm">
@@ -638,19 +613,30 @@ export const TransactionModal: React.FC<Props> = ({
           {/* Categories */}
           {type !== TransactionType.TRANSFER && (
             <div>
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-slate-700">
                   Categoría
                 </label>
-                <button
-                  type="button"
-                  onClick={onAddCategory}
-                  className="text-xs text-blue-600 font-bold hover:underline"
-                >
-                  + Crear Nueva
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryEditMode(!isCategoryEditMode)}
+                    className={`text-xs font-bold transition-colors flex items-center gap-1 ${isCategoryEditMode ? 'text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    {isCategoryEditMode ? 'Terminar Edición' : 'Editar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onAddCategory}
+                    className="text-xs text-blue-600 font-bold hover:underline"
+                  >
+                    + Crear Nueva
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto no-scrollbar">
+              
+              <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">
                 {categories
                   .filter(
                     (c) =>
@@ -661,9 +647,27 @@ export const TransactionModal: React.FC<Props> = ({
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setCategoryId(cat.id)}
-                      className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${categoryId === cat.id ? "border-blue-500 bg-blue-50 text-blue-600" : "border-slate-100 bg-slate-50 text-slate-500"}`}
+                      onClick={() => {
+                          if (isCategoryEditMode) {
+                              onEditCategory(cat);
+                          } else {
+                              setCategoryId(cat.id);
+                          }
+                      }}
+                      className={`relative flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
+                          isCategoryEditMode 
+                            ? "border-amber-300 bg-amber-50" 
+                            : categoryId === cat.id 
+                                ? "border-blue-500 bg-blue-50 text-blue-600" 
+                                : "border-slate-100 bg-slate-50 text-slate-500"
+                      }`}
                     >
+                      {isCategoryEditMode && (
+                          <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white p-1 rounded-full shadow-sm animate-pulse">
+                              <Edit2 className="w-2.5 h-2.5" />
+                          </div>
+                      )}
+                      
                       <span className="text-xl mb-1">{cat.icon}</span>
                       <span className="text-[10px] truncate w-full text-center">
                         {cat.name}
@@ -674,7 +678,6 @@ export const TransactionModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Date & Note */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -702,7 +705,6 @@ export const TransactionModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Recurring Toggle */}
           {type !== TransactionType.TRANSFER && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-100 rounded-xl">

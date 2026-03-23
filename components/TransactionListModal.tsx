@@ -65,7 +65,7 @@ export const TransactionListModal: React.FC<Props> = ({ isOpen, onClose, transac
                         </div>
                         <div className="text-right">
                              <span className={`font-bold block ${tx.type === 'INCOME' ? 'text-emerald-600' : 'text-slate-800'}`}>
-                                {tx.type === 'INCOME' ? '+' : '-'}{tx.currency === 'USD' ? '$' : 'Bs.'}{tx.amount.toLocaleString()}
+                                {tx.type === 'INCOME' ? '+' : '-'}{tx.currency === 'USD' ? '$' : 'Bs.'}{tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </span>
                             {tx.type === TransactionType.TRANSFER && tx.toAccountId && (
                                 <span className="text-[10px] text-blue-500">→ {getAccountName(tx.toAccountId)}</span>

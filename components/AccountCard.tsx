@@ -40,7 +40,7 @@ export const AccountCard: React.FC<Props> = ({ account, onClick, onEdit }) => {
       </div>
       <h3 className="font-medium text-white/90 truncate pr-6">{account.name}</h3>
       <p className="text-2xl font-bold mt-1">
-        {getCurrencySymbol()}{account.balance.toLocaleString()}
+        {getCurrencySymbol()}{account.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
       </p>
 
       {/* Edit Button */}
