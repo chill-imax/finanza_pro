@@ -4,4 +4,5 @@
     <string name="title_activity_main">FinanzaPro</string>
     <string name="package_name">com.finanzapro.app</string>
     <string name="custom_url_scheme">com.finanzapro.app</string>
+    <string name="server_client_id">394833255589-7lr5og0ksr7p5fob7a2ad56dn10iks90.apps.googleusercontent.com</string>
 </resources>
