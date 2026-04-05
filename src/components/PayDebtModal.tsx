@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
   debt: Debt | null;
   accounts: Account[];
-  onConfirm: (amount: number, accountId: string, exchangeRate?: number) => void;
+  onConfirm: (amount: number, accountId: string, exchangeRate: number | undefined, date: string) => void;
   currentExchangeRate: number;
 }
 
@@ -22,19 +22,24 @@ export const PayDebtModal: React.FC<Props> = ({
   const userCountry = localStorage.getItem("user_country") || "Venezuela";
   const mainCurrency = localStorage.getItem("main_currency") || "USD";
 
+  // Función auxiliar que calcula la fecha local correcta del dispositivo
+  const getLocalDate = () => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+  };
+
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
   const [customRate, setCustomRate] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getLocalDate());
 
   useEffect(() => {
     if (isOpen && debt) {
       setAmount((debt.amount - debt.paidAmount).toString());
-      // Try to find same currency account first, else default to first
-      const matchingAccount = accounts.find(
-        (a) => a.currency === debt.currency,
-      );
+      const matchingAccount = accounts.find((a) => a.currency === debt.currency);
       setAccountId(matchingAccount?.id || accounts[0]?.id || "");
       setCustomRate(currentExchangeRate.toString());
+      setPaymentDate(getLocalDate());
     }
   }, [isOpen, debt, accounts, currentExchangeRate]);
 
@@ -42,37 +47,23 @@ export const PayDebtModal: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirm(parseFloat(amount), accountId, parseFloat(customRate));
+    onConfirm(parseFloat(amount), accountId, parseFloat(customRate), paymentDate);
     setAmount("");
   };
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const isPaying = debt.type === "I_OWE";
-
-  // La multicurrency solo aplica para Venezuela
-  const isMultiCurrency =
-    userCountry === "Venezuela" &&
-    selectedAccount &&
-    selectedAccount.currency !== debt.currency;
+  const isMultiCurrency = userCountry === "Venezuela" && selectedAccount && selectedAccount.currency !== debt.currency;
 
   const getConversionPreview = () => {
     if (!amount || !selectedAccount) return null;
     const val = parseFloat(amount);
     const rate = parseFloat(customRate) || currentExchangeRate;
-
     let convertedAmount = 0;
-    // Debt is USD, Paying with VES -> Cost is Amount * Rate
-    if (
-      debt.currency === Currency.USD &&
-      selectedAccount.currency === Currency.VES
-    ) {
+    
+    if (debt.currency === Currency.USD && selectedAccount.currency === Currency.VES) {
       convertedAmount = val * rate;
-    }
-    // Debt is VES, Paying with USD -> Cost is Amount / Rate
-    else if (
-      debt.currency === Currency.VES &&
-      selectedAccount.currency === Currency.USD
-    ) {
+    } else if (debt.currency === Currency.VES && selectedAccount.currency === Currency.USD) {
       convertedAmount = val / rate;
     }
 
@@ -83,29 +74,19 @@ export const PayDebtModal: React.FC<Props> = ({
         </div>
         <div className="flex justify-between">
           <span>Monto Deuda:</span>
-          <span className="font-mono">
-            {debt.currency} {val}
-          </span>
+          <span className="font-mono">{debt.currency} {val}</span>
         </div>
         <div className="flex justify-between font-bold text-blue-700 mt-1 pt-1 border-t border-blue-200">
           <span>{isPaying ? "Se descontará:" : "Se depositará:"}</span>
-          <span>
-            {selectedAccount.currency}{" "}
-            {convertedAmount.toLocaleString(undefined, {
-              maximumFractionDigits: 2,
-            })}
-          </span>
+          <span>{selectedAccount.currency} {convertedAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
         </div>
       </div>
     );
   };
 
-  // Helper para mostrar la moneda formateada según el país
   const formatCurrency = (amount: number, currencyCode: string) => {
     if (userCountry === "Venezuela") {
-      return currencyCode === "USD"
-        ? `$${amount.toLocaleString()}`
-        : `Bs.${amount.toLocaleString()}`;
+      return currencyCode === "USD" ? `$${amount.toLocaleString()}` : `Bs.${amount.toLocaleString()}`;
     }
     return `${mainCurrency} ${amount.toLocaleString()}`;
   };
@@ -117,19 +98,14 @@ export const PayDebtModal: React.FC<Props> = ({
           <h2 className="text-lg font-bold text-slate-800">
             {isPaying ? "Abonar a Deuda" : "Registrar Cobro"}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
-            <p className="text-xs text-slate-500 mb-1">
-              {isPaying ? "Deuda con" : "Deuda de"}
-            </p>
+            <p className="text-xs text-slate-500 mb-1">{isPaying ? "Deuda con" : "Deuda de"}</p>
             <p className="font-bold text-lg text-slate-800">{debt.name}</p>
             <div className="flex justify-between mt-2 text-sm">
               <span className="text-slate-500">Restante:</span>
@@ -139,27 +115,38 @@ export const PayDebtModal: React.FC<Props> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Monto a {isPaying ? "Pagar" : "Cobrar"}
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
-                {userCountry === "Venezuela"
-                  ? debt.currency === "USD"
-                    ? "$"
-                    : "Bs."
-                  : mainCurrency}
-              </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Monto
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                  {userCountry === "Venezuela" ? (debt.currency === "USD" ? "$" : "Bs.") : mainCurrency}
+                </span>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  max={debt.amount - debt.paidAmount}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={`w-full ${userCountry === "Venezuela" ? "pl-8" : "pl-12"} pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Fecha de abono
+              </label>
               <input
-                type="number"
+                type="date"
                 required
-                min="0.01"
-                step="0.01"
-                max={debt.amount - debt.paidAmount}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className={`w-full ${userCountry === "Venezuela" ? "pl-8" : "pl-12"} pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold`}
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium outline-none"
               />
             </div>
           </div>
@@ -175,8 +162,7 @@ export const PayDebtModal: React.FC<Props> = ({
             >
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.name} - Saldo:{" "}
-                  {formatCurrency(acc.balance, acc.currency)}
+                  {acc.name} - Saldo: {formatCurrency(acc.balance, acc.currency)}
                 </option>
               ))}
             </select>
@@ -205,8 +191,7 @@ export const PayDebtModal: React.FC<Props> = ({
             type="submit"
             className={`w-full py-3 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2 ${isPaying ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
           >
-            {isPaying ? "Confirmar Pago" : "Confirmar Cobro"}{" "}
-            <ArrowRight className="w-5 h-5" />
+            {isPaying ? "Confirmar Pago" : "Confirmar Cobro"} <ArrowRight className="w-5 h-5" />
           </button>
         </form>
       </div>

@@ -4,11 +4,9 @@ import {
   Transaction,
   Debt,
   Category,
-  RecurringTransaction,
   Currency,
   AccountType,
   TransactionType,
-  Frequency,
   DEFAULT_CATEGORIES,
   Goal,
 } from "../types";
@@ -40,12 +38,6 @@ export function useAppState() {
     const saved = localStorage.getItem("categories");
     return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
   });
-  const [recurringTransactions, setRecurringTransactions] = useState<
-    RecurringTransaction[]
-  >(() => {
-    const saved = localStorage.getItem("recurringTransactions");
-    return saved ? JSON.parse(saved) : [];
-  });
 
   // ── Goals (Metas / Gastos a futuro) ────────────────────────────────
   const [goals, setGoals] = useState<Goal[]>(() => {
@@ -65,17 +57,18 @@ export function useAppState() {
   // ── Exchange rate ───────────────────────────────────────────────────
   const [bcvRate, setBcvRate] = useState<number>(0);
 
+  // ── Limpieza de features eliminados ─────────────────────────────────
+  useEffect(() => {
+    localStorage.removeItem("recurringTransactions"); // Limpia datos viejos
+  }, []);
+
   // ── Persist to localStorage ─────────────────────────────────────────
   useEffect(() => {
     localStorage.setItem("accounts", JSON.stringify(accounts));
     localStorage.setItem("transactions", JSON.stringify(transactions));
     localStorage.setItem("debts", JSON.stringify(debts));
     localStorage.setItem("categories", JSON.stringify(categories));
-    localStorage.setItem(
-      "recurringTransactions",
-      JSON.stringify(recurringTransactions),
-    );
-  }, [accounts, transactions, debts, categories, recurringTransactions]);
+  }, [accounts, transactions, debts, categories]);
 
   // Goals en su propio efecto para no mezclar con el batch anterior
   useEffect(() => {
@@ -242,8 +235,6 @@ export function useAppState() {
     setDebts,
     categories,
     setCategories,
-    recurringTransactions,
-    setRecurringTransactions,
     goals,
     setGoals,
     streakCount,
