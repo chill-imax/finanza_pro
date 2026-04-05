@@ -432,24 +432,21 @@ function App() {
   };
 
   // ── Drive backup ───────────────────────────────────────────────────
-const handleBackup = async () => {
-  setIsBackingUp(true);
-  const result = await backupToDrive();
-  
-  showToast(
-    result.success ? "success" : "error",
-    result.success ? "Respaldo completado" : "Error al respaldar",
-    result.message,
-  );
-
-  setIsBackingUp(false);
-
-  if (result.success) {
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    const result = await backupToDrive();
+    showToast(
+      result.success ? "success" : "error",
+      result.success ? "Respaldo completado" : "Error al respaldar",
+      result.message,
+    );
+    setIsBackingUp(false);
+    if (result.success) {
     setTimeout(() => {
       window.location.reload();
     }, 1500);
   }
-};
+  };
 
   const handleRestore = () => {
     openConfirmation({
