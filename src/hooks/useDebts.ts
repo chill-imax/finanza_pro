@@ -58,6 +58,7 @@ export function useDebts({
     amount: number,
     accountId: string,
     exchangeRate?: number,
+    paymentDate?: string
   ) => {
     if (!payDebtData) return;
 
@@ -104,7 +105,15 @@ export function useDebts({
       }),
     );
 
-    // 5. Creamos la transacción
+    // Calculamos la fecha local exacta como fallback (por si falla el parámetro)
+    const getLocalDate = () => {
+      const d = new Date();
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    };
+
+    // 5. Creamos la transacción usando la fecha elegida en el modal o la local
+    const txDate = paymentDate || getLocalDate();
+
     const newTx: Transaction = {
       id: crypto.randomUUID(),
       amount: deductionAmount,
@@ -112,7 +121,7 @@ export function useDebts({
       type: isPaying ? TransactionType.EXPENSE : TransactionType.INCOME,
       accountId,
       categoryId: "10",
-      date: new Date().toISOString().split("T")[0],
+      date: txDate,
       note: `${isPaying ? "Pago a deuda" : "Cobro de deuda"}: ${payDebtData.name} (Abonado: ${amount} ${payDebtData.currency})`,
       linkedDebtId: payDebtData.id,
       debtPaymentAmount: amount,

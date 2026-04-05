@@ -99,8 +99,6 @@ function App() {
     setDebts,
     categories,
     setCategories,
-    recurringTransactions,
-    setRecurringTransactions,
     goals,
     setGoals,
     streakCount,
@@ -185,14 +183,13 @@ function App() {
     addTransaction,
     deleteTransaction,
     editTransaction,
-    processRecurring,
+  
   } = useTransactions({
     accounts,
     setAccounts,
     transactions,
     setTransactions,
-    recurringTransactions,
-    setRecurringTransactions,
+  
     setSelectedTransaction,
     updateStreak,
     debts,
@@ -211,9 +208,6 @@ function App() {
     openConfirmation,
   });
 
-  useEffect(() => {
-    if (recurringTransactions.length > 0) processRecurring();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Account actions ────────────────────────────────────────────────
   const saveAccount = (account: Account) => {
@@ -590,6 +584,7 @@ function App() {
           <DebtsView
             debts={debts}
             accounts={accounts}
+            transactions={transactions}
             userCountry={userCountry}
             mainCurrency={mainCurrency}
             onDeleteDebt={deleteDebt}

@@ -4,15 +4,11 @@ import {
   Category,
   TransactionType,
   Currency,
-  Frequency,
 } from "../types";
 import {
   X,
   RefreshCw,
-  CalendarRange,
-  Leaf,
   Sprout,
-  TrendingUp,
   Edit2,
 } from "lucide-react";
 
@@ -60,12 +56,6 @@ export const TransactionModal: React.FC<Props> = ({
   const [categoryId, setCategoryId] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState<Frequency>(Frequency.MONTHLY);
-  const [customInterval, setCustomInterval] = useState(1);
-  const [customUnit, setCustomUnit] = useState<
-    "DAYS" | "WEEKS" | "MONTHS" | "YEARS"
-  >("MONTHS");
   const [customExchangeRate, setCustomExchangeRate] = useState<string>("");
 
   const [isCategoryEditMode, setIsCategoryEditMode] = useState(false);
@@ -108,10 +98,6 @@ export const TransactionModal: React.FC<Props> = ({
       }
       setDate(new Date().toISOString().split("T")[0]);
       setCustomExchangeRate(currentExchangeRate.toString());
-      setIsRecurring(false);
-      setFrequency(Frequency.MONTHLY);
-      setCustomInterval(1);
-      setCustomUnit("MONTHS");
 
       setIsCategoryEditMode(false);
     }
@@ -178,11 +164,7 @@ export const TransactionModal: React.FC<Props> = ({
       categoryId: type === TransactionType.TRANSFER ? "TRANSFER" : categoryId,
       note,
       date,
-      exchangeRate: finalRate, // Se envía siempre la tasa si estás en Venezuela
-      isRecurring,
-      frequency,
-      customInterval,
-      customUnit,
+      exchangeRate: finalRate,
     });
     onClose();
   };
@@ -715,94 +697,11 @@ export const TransactionModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {type !== TransactionType.TRANSFER && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-100 rounded-xl">
-                <div
-                  className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors shrink-0 ${isRecurring ? "bg-purple-600" : "bg-slate-300"}`}
-                  onClick={() => setIsRecurring(!isRecurring)}
-                >
-                  <div
-                    className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${isRecurring ? "translate-x-4" : ""}`}
-                  />
-                </div>
-                <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => setIsRecurring(!isRecurring)}
-                >
-                  <p className="text-sm font-bold text-purple-900 flex items-center gap-2">
-                    <CalendarRange className="w-4 h-4" /> Programar / Recurrente
-                  </p>
-                  {!isRecurring && (
-                    <p className="text-xs text-purple-600">
-                      Se repetirá automáticamente.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {isRecurring && (
-                <div className="p-3 bg-white border border-purple-100 rounded-xl animate-fade-in shadow-sm">
-                  <label className="block text-xs font-bold text-purple-800 mb-2 uppercase">
-                    Frecuencia
-                  </label>
-                  <select
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value as Frequency)}
-                    className="w-full p-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-3"
-                  >
-                    <option value={Frequency.DAILY}>Diario</option>
-                    <option value={Frequency.WEEKLY}>Semanal</option>
-                    <option value={Frequency.BIWEEKLY}>
-                      Quincenal (15 días)
-                    </option>
-                    <option value={Frequency.MONTHLY}>Mensual</option>
-                    <option value={Frequency.YEARLY}>Anual</option>
-                    <option value={Frequency.CUSTOM}>Personalizado</option>
-                  </select>
-                  {frequency === Frequency.CUSTOM && (
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <label className="block text-[10px] font-bold text-purple-600 mb-1">
-                          Cada
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={customInterval}
-                          onChange={(e) =>
-                            setCustomInterval(parseInt(e.target.value) || 1)
-                          }
-                          className="w-full p-2 bg-purple-50 border border-purple-200 rounded-lg text-sm"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-[10px] font-bold text-purple-600 mb-1">
-                          Unidad
-                        </label>
-                        <select
-                          value={customUnit}
-                          onChange={(e) => setCustomUnit(e.target.value as any)}
-                          className="w-full p-2 bg-purple-50 border border-purple-200 rounded-lg text-sm"
-                        >
-                          <option value="DAYS">Días</option>
-                          <option value="WEEKS">Semanas</option>
-                          <option value="MONTHS">Meses</option>
-                          <option value="YEARS">Años</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           <button
             type="submit"
             className="w-full py-3 font-bold rounded-xl shadow-lg transition-colors mt-4 bg-primary text-white hover:bg-slate-800"
           >
-            {isRecurring ? "Guardar y Programar" : "Guardar Transacción"}
+            Guardar Transacción
           </button>
         </form>
       </div>
