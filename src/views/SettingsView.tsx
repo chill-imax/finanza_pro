@@ -389,7 +389,7 @@ export const SettingsView: React.FC<Props> = ({
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
             <div>
               <p className="text-sm font-bold text-slate-800">FinanzaPro</p>
-              <p className="text-xs text-slate-400">Versión 2.0</p>
+              <p className="text-xs text-slate-400">Versión 2.1</p>
             </div>
             <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg font-bold">
               Actualizado

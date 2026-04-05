@@ -438,16 +438,26 @@ function App() {
   };
 
   // ── Drive backup ───────────────────────────────────────────────────
-  const handleBackup = async () => {
-    setIsBackingUp(true);
-    const result = await backupToDrive();
-    showToast(
-      result.success ? "success" : "error",
-      result.success ? "Respaldo completado" : "Error al respaldar",
-      result.message,
-    );
-    setIsBackingUp(false);
-  };
+const handleBackup = async () => {
+  setIsBackingUp(true);
+  const result = await backupToDrive();
+  
+  showToast(
+    result.success ? "success" : "error",
+    result.success ? "Respaldo completado" : "Error al respaldar",
+    result.message,
+  );
+
+  setIsBackingUp(false);
+
+  // Si fue exitoso, esperamos 1.5 segundos para que el usuario lea el Toast
+  // y luego refrescamos para que aparezca el correo conectado.
+  if (result.success) {
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  }
+};
 
   const handleRestore = () => {
     openConfirmation({

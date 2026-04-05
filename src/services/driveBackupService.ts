@@ -4,16 +4,16 @@
  * Servicio de respaldo/restauración usando Google Drive appDataFolder.
  *
  * DEPENDENCIAS:
- *   npm install @codetrix-studio/capacitor-google-auth
+ * npm install @codetrix-studio/capacitor-google-auth
  *
  * CÓMO USAR en tus botones existentes:
- *   import { backupToDrive, restoreFromDrive, signOutGoogle } from './services/driveBackupService';
+ * import { backupToDrive, restoreFromDrive, signOutGoogle } from './services/driveBackupService';
  *
- *   // Botón "Respaldar ahora"
- *   <button onClick={backupToDrive}>Respaldar ahora</button>
+ * // Botón "Respaldar ahora"
+ * <button onClick={backupToDrive}>Respaldar ahora</button>
  *
- *   // Botón "Restaurar datos"
- *   <button onClick={restoreFromDrive}>Restaurar datos</button>
+ * // Botón "Restaurar datos"
+ * <button onClick={restoreFromDrive}>Restaurar datos</button>
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -45,6 +45,13 @@ interface BackupResult {
  * Si el usuario ya tiene sesión activa, la reutiliza silenciosamente.
  */
 async function getAccessToken(): Promise<string> {
+  // Inicialización del plugin 
+  GoogleAuth.initialize({
+    clientId: "394833255589-7lr5og0ksr7p5fob7a2ad56dn10iks90.apps.googleusercontent.com", 
+    scopes: ["profile", "email", "https://www.googleapis.com/auth/drive.appdata"],
+    grantOfflineAccess: true,
+  });
+
   try {
     // Intenta refrescar la sesión existente sin mostrar el popup
     const user = await GoogleAuth.refresh();
@@ -67,6 +74,7 @@ async function getAccessToken(): Promise<string> {
   // Guardar email para mostrarlo en la UI de Ajustes
   if (user.email) {
     localStorage.setItem("google_connected_email", user.email);
+    
   }
 
   return user.authentication.accessToken;
@@ -258,10 +266,10 @@ function writeLocalStorage(data: Record<string, unknown>): void {
  * RESPALDAR: Lee el localStorage, lo convierte en JSON y lo sube a Drive.
  *
  * Flujo:
- *   1. Login con Google → obtiene accessToken
- *   2. Busca si ya existe un archivo de respaldo
- *   3. Si existe → actualiza. Si no → crea nuevo.
- *   4. Retorna resultado con timestamp
+ * 1. Login con Google → obtiene accessToken
+ * 2. Busca si ya existe un archivo de respaldo
+ * 3. Si existe → actualiza. Si no → crea nuevo.
+ * 4. Retorna resultado con timestamp
  *
  * @returns BackupResult con success, message y timestamp
  */
@@ -315,14 +323,14 @@ export async function backupToDrive(): Promise<BackupResult> {
  * RESTAURAR: Busca el archivo en Drive, lo descarga y sobreescribe el localStorage.
  *
  * Flujo:
- *   1. Login con Google → obtiene accessToken
- *   2. Busca el archivo de respaldo en appDataFolder
- *   3. Descarga el contenido JSON
- *   4. Sobreescribe el localStorage con los datos
- *   5. Recarga la app para aplicar los cambios
+ * 1. Login con Google → obtiene accessToken
+ * 2. Busca el archivo de respaldo en appDataFolder
+ * 3. Descarga el contenido JSON
+ * 4. Sobreescribe el localStorage con los datos
+ * 5. Recarga la app para aplicar los cambios
  *
  * ⚠️  IMPORTANTE: Llama a window.location.reload() al final para que React
- *     vuelva a leer el localStorage desde cero.
+ * vuelva a leer el localStorage desde cero.
  *
  * @returns BackupResult con success y message
  */

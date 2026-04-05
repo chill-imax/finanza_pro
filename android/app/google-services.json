@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "394833255589",
+    "project_id": "finanza-pro",
+    "storage_bucket": "finanza-pro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394833255589:android:8b72cea73a0b41140fc14c",
+        "android_client_info": {
+          "package_name": "com.finanzapro.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "394833255589-7lr5og0ksr7p5fob7a2ad56dn10iks90.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5u_bOiw8eMz6rwtn-m_EUqIAWUEFgyvs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "394833255589-7lr5og0ksr7p5fob7a2ad56dn10iks90.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
