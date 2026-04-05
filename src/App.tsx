@@ -450,8 +450,6 @@ const handleBackup = async () => {
 
   setIsBackingUp(false);
 
-  // Si fue exitoso, esperamos 1.5 segundos para que el usuario lea el Toast
-  // y luego refrescamos para que aparezca el correo conectado.
   if (result.success) {
     setTimeout(() => {
       window.location.reload();
